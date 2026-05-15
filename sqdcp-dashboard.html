@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ops Support — SQDCP Dashboard | Direct Soccer</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --ds-navy:   #253A6D;
+      --ds-navy-d: #1b2d56;
+      --ds-sky:    #14B1E7;
+      --ds-orange: #F57328;
+      --ds-bg:     #f0f3f8;
+      --ds-card:   #ffffff;
+      --ds-border: #dde3ee;
+      --ds-text:   #1a1a2e;
+      --ds-mid:    #3d4f6e;
+      --ds-light:  #6b7a99;
+
+      --g:   #28a745;
+      --g-b: #d4edda;
+      --a:   #e0a800;
+      --a-b: #fff3cd;
+      --r:   #dc3545;
+      --r-b: #f8d7da;
+      --n:   #adb5bd;
+      --n-b: #f1f3f4;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Calibri, 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--ds-bg);
+      color: var(--ds-text);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── Header ───────────────────────────────────────────── */
+    .hdr {
+      background: var(--ds-navy);
+      color: #fff;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,.35);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .hdr-brand { display: flex; align-items: center; gap: 12px; }
+    .hdr-ball {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: var(--ds-orange);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .hdr-title { font-size: 17px; font-weight: 700; line-height: 1.25; }
+    .hdr-sub   { font-size: 11px; opacity: .75; margin-top: 2px; }
+    .hdr-clock { font-size: 12px; opacity: .8; text-align: right; line-height: 1.5; }
+
+    /* ── Nav ──────────────────────────────────────────────── */
+    .nav {
+      background: var(--ds-navy-d);
+      display: flex;
+      padding: 0 20px;
+      gap: 2px;
+      position: sticky;
+      top: 64px;
+      z-index: 99;
+    }
+    .nav-btn {
+      background: none; border: none; color: rgba(255,255,255,.7);
+      padding: 13px 18px; cursor: pointer; font-size: 13px; font-weight: 500;
+      border-bottom: 3px solid transparent; transition: all .15s;
+      font-family: inherit; white-space: nowrap;
+    }
+    .nav-btn:hover { color: #fff; background: rgba(255,255,255,.08); }
+    .nav-btn.active { color: #fff; border-bottom-color: var(--ds-orange); }
+
+    /* ── Layout ───────────────────────────────────────────── */
+    .main  { max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Card ─────────────────────────────────────────────── */
+    .card {
+      background: var(--ds-card);
+      border-radius: 10px;
+      box-shadow: 0 1px 5px rgba(0,0,0,.08);
+      padding: 22px 24px;
+      margin-bottom: 20px;
+    }
+    .card-hd {
+      font-size: 14px; font-weight: 600; color: var(--ds-mid);
+      padding-bottom: 14px; margin-bottom: 18px;
+      border-bottom: 1px solid var(--ds-border);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-hd .right { margin-left: auto; }
+
+    /* ── Date nav ─────────────────────────────────────────── */
+    .date-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .date-row input[type="date"] {
+      font-family: inherit; font-size: 15px; font-weight: 600;
+      border: 2px solid var(--ds-border); border-radius: 8px;
+      padding: 7px 13px; color: var(--ds-text); outline: none;
+      transition: border-color .15s; cursor: pointer;
+    }
+    .date-row input[type="date"]:focus { border-color: var(--ds-sky); }
+    .icon-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 2px solid var(--ds-border); background: #fff;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: var(--ds-mid); transition: all .15s;
+    }
+    .icon-btn:hover { border-color: var(--ds-sky); color: var(--ds-navy); }
+    .day-tag {
+      font-size: 13px; font-weight: 500; color: var(--ds-light);
+      background: var(--ds-bg); padding: 5px 12px; border-radius: 20px;
+    }
+    .wknd-warn {
+      margin-top: 12px;
+      background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px;
+      padding: 9px 14px; font-size: 13px; color: #856404; display: none;
+    }
+
+    /* ── SQDCP Entry Table ───────────────────────────────── */
+    .sq-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+    .sq-table tr { background: var(--ds-bg); }
+    .sq-table td { padding: 12px 14px; }
+    .sq-table td:first-child  { border-radius: 8px 0 0 8px; width: 130px; }
+    .sq-table td:last-child   { border-radius: 0 8px 8px 0; }
+
+    .cat-lbl {
+      font-weight: 700; font-size: 13px; letter-spacing: .4px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .cat-ico { font-size: 18px; }
+
+    .rag-sel { display: flex; gap: 7px; }
+    .rag-btn {
+      padding: 7px 18px; border-radius: 20px;
+      border: 2px solid transparent; cursor: pointer;
+      font-size: 12px; font-weight: 700; letter-spacing: .3px;
+      transition: all .15s; opacity: .4; font-family: inherit;
+    }
+    .rag-btn.g { background: var(--g-b); color: var(--g); }
+    .rag-btn.a { background: var(--a-b); color: var(--a); }
+    .rag-btn.r { background: var(--r-b); color: var(--r); }
+    .rag-btn.active { opacity: 1; }
+    .rag-btn.g.active { border-color: var(--g); }
+    .rag-btn.a.active { border-color: var(--a); }
+    .rag-btn.r.active { border-color: var(--r); }
+
+    .crit { font-size: 11px; color: var(--ds-light); margin-top: 5px; line-height: 1.5; }
+
+    .notes-ta {
+      width: 100%; font-family: inherit; font-size: 12px;
+      border: 1px solid var(--ds-border); border-radius: 7px;
+      padding: 7px 10px; resize: none; height: 50px;
+      color: var(--ds-text); outline: none; background: #fff;
+      transition: border-color .15s;
+    }
+    .notes-ta:focus { border-color: var(--ds-sky); }
+
+    /* ── Save row ─────────────────────────────────────────── */
+    .save-row {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--ds-border);
+    }
+    .ldr-row { display: flex; align-items: center; gap: 10px; }
+    .ldr-lbl { font-size: 13px; font-weight: 500; color: var(--ds-mid); }
+    .ldr-badge {
+      padding: 6px 16px; border-radius: 20px;
+      font-size: 12px; font-weight: 700; letter-spacing: .4px;
+    }
+    .ldr-badge.g   { background: var(--g-b); color: var(--g); }
+    .ldr-badge.r   { background: var(--r-b); color: var(--r); }
+    .ldr-badge.nil { background: var(--n-b); color: var(--n); }
+
+    .btn-save {
+      background: var(--ds-navy); color: #fff;
+      border: none; padding: 10px 26px; border-radius: 8px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: background .15s;
+    }
+    .btn-save:hover { background: var(--ds-navy-d); }
+
+    .rule-note {
+      margin-top: 18px;
+      background: #eaf3fb; border-left: 3px solid var(--ds-sky);
+      border-radius: 0 7px 7px 0; padding: 11px 14px;
+      font-size: 12px; color: var(--ds-navy); line-height: 1.6;
+    }
+
+    /* ── Toast ────────────────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--ds-navy); color: #fff;
+      padding: 11px 20px; border-radius: 8px; font-size: 13px; font-weight: 500;
+      box-shadow: 0 4px 14px rgba(0,0,0,.25);
+      transform: translateY(80px); opacity: 0; transition: all .3s; z-index: 999;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ── Week view ────────────────────────────────────────── */
+    .wk-hd {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .wk-lbl { font-size: 14px; font-weight: 600; }
+
+    .wk-grid { width: 100%; border-collapse: collapse; }
+    .wk-grid th {
+      text-align: center; padding: 9px 6px;
+      font-size: 11px; font-weight: 600; color: var(--ds-light);
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .wk-grid th.today { color: var(--ds-sky); }
+    .wk-grid th.cat-h { text-align: left; padding-left: 14px; }
+    .wk-grid td {
+      text-align: center; padding: 8px 6px;
+      border: 1px solid var(--ds-border);
+    }
+    .wk-grid td.cat-c {
+      text-align: left; padding: 10px 14px;
+      font-weight: 600; font-size: 12px; color: var(--ds-mid);
+      background: var(--ds-bg); border-left: none;
+    }
+    .wk-grid td.today-c { background: rgba(20,177,231,.07); }
+    .wk-grid tr.ldr-row td { border-top: 2px solid var(--ds-border); font-weight: 700; }
+
+    .rag-dot {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 50%;
+      font-size: 10px; font-weight: 700; letter-spacing: .2px; cursor: default;
+    }
+    .rag-dot.G { background: var(--g); color: #fff; }
+    .rag-dot.A { background: var(--a); color: #fff; }
+    .rag-dot.R { background: var(--r); color: #fff; }
+    .rag-dot.N { background: var(--ds-border); color: var(--ds-light); font-size: 16px; }
+
+    /* ── Stats strip ──────────────────────────────────────── */
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card {
+      background: #fff; border-radius: 9px; padding: 14px 16px; text-align: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .stat-lbl { font-size: 10px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--ds-light); margin-bottom: 6px; }
+    .stat-val { font-size: 26px; font-weight: 700; }
+    .stat-sub { font-size: 11px; color: var(--ds-light); margin-top: 2px; }
+
+    /* ── Chart ────────────────────────────────────────────── */
+    .chart-wrap { position: relative; height: 270px; }
+
+    /* ── History table ────────────────────────────────────── */
+    .flt-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 18px; }
+    .flt-grp { display: flex; flex-direction: column; gap: 4px; }
+    .flt-grp label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--ds-light); }
+    .flt-grp input,
+    .flt-grp select {
+      font-family: inherit; font-size: 13px;
+      border: 1px solid var(--ds-border); border-radius: 7px;
+      padding: 7px 11px; color: var(--ds-text); outline: none; background: #fff;
+      transition: border-color .15s;
+    }
+    .flt-grp input:focus,
+    .flt-grp select:focus { border-color: var(--ds-sky); }
+    .btn-flt {
+      padding: 7px 18px; border-radius: 7px; border: none;
+      font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit;
+      align-self: flex-end; height: 36px;
+    }
+    .btn-flt.apply { background: var(--ds-navy); color: #fff; }
+    .btn-flt.clear { background: var(--n-b); color: var(--ds-mid); }
+
+    .hist-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .hist-tbl th {
+      text-align: left; padding: 9px 11px;
+      font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+      color: var(--ds-light); border-bottom: 2px solid var(--ds-border);
+      background: var(--ds-bg);
+    }
+    .hist-tbl td {
+      padding: 9px 11px; border-bottom: 1px solid var(--ds-border);
+      vertical-align: middle;
+    }
+    .hist-tbl tr:hover td { background: rgba(20,177,231,.05); }
+    .hist-tbl td.edit-link { cursor: pointer; color: var(--ds-sky); font-weight: 600; }
+    .hist-tbl td.edit-link:hover { text-decoration: underline; }
+
+    .pill {
+      display: inline-block; padding: 3px 9px; border-radius: 12px;
+      font-size: 10px; font-weight: 700; letter-spacing: .3px;
+    }
+    .pill.G { background: var(--g-b); color: var(--g); }
+    .pill.A { background: var(--a-b); color: var(--a); }
+    .pill.R { background: var(--r-b); color: var(--r); }
+    .pill.N { background: var(--n-b); color: var(--n); }
+
+    /* ── Empty state ──────────────────────────────────────── */
+    .empty { text-align: center; padding: 48px; color: var(--ds-light); }
+    .empty-ico { font-size: 44px; margin-bottom: 10px; }
+
+    /* ── Data / Export tab ────────────────────────────────── */
+    .exp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .exp-card { background: var(--ds-bg); border-radius: 9px; padding: 18px; }
+    .exp-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .exp-card p { font-size: 12px; color: var(--ds-light); margin-bottom: 14px; line-height: 1.55; }
+    .btn-exp {
+      display: inline-block; padding: 8px 18px; border-radius: 7px;
+      font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; border: none;
+      transition: all .15s;
+    }
+    .btn-exp.primary  { background: var(--ds-navy); color: #fff; }
+    .btn-exp.outline  { background: #fff; color: var(--ds-navy); border: 1px solid var(--ds-navy); }
+    .btn-exp.danger   { background: #fff0f0; color: var(--r); border: 1px solid var(--r-b); }
+
+    /* ── Responsive ───────────────────────────────────────── */
+    @media (max-width: 700px) {
+      .hdr { padding: 0 14px; }
+      .nav  { padding: 0 8px; overflow-x: auto; }
+      .stats { grid-template-columns: repeat(3, 1fr); }
+      .exp-grid { grid-template-columns: 1fr; }
+      .sq-table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────── -->
+<header class="hdr">
+  <div class="hdr-brand">
+    <div class="hdr-ball">⚽</div>
+    <div>
+      <div class="hdr-title">Operational Support — SQDCP Dashboard</div>
+      <div class="hdr-sub">Direct Soccer | Daily Performance Tracker</div>
+    </div>
+  </div>
+  <div class="hdr-clock" id="hdrClock"></div>
+</header>
+
+<!-- ── Navigation ──────────────────────────────────────────── -->
+<nav class="nav">
+  <button class="nav-btn active" id="nav-entry"   onclick="showTab('entry',this)">📋 Daily Entry</button>
+  <button class="nav-btn"        id="nav-week"    onclick="showTab('week',this)">📅 This Week</button>
+  <button class="nav-btn"        id="nav-history" onclick="showTab('history',this)">📊 History</button>
+  <button class="nav-btn"        id="nav-data"    onclick="showTab('data',this)">💾 Data</button>
+</nav>
+
+<main class="main">
+
+  <!-- ══════════════════════════════════════════════════════
+       TAB: DAILY ENTRY
+  ══════════════════════════════════════════════════════════ -->
+  <div id="panel-entry" class="panel active">
+    <div class="card">
+      <div class="card-hd">📋 Daily SQDCP Entry — Operational Support</div>
+
+      <div class="date-row">
+        <button class="icon-btn" onclick="navDate(-1)" title="Previous working day">◀</button>
+        <input type="date" id="entryDate" onchange="onDateChange()">
+        <button class="icon-btn" onclick="navDate(1)"  title="Next working day">▶</button>
+        <span class="day-tag" id="dayTag"></span>
+        <span id="existingBadge" style="font-size:11px;color:var(--ds-sky);font-weight:600;display:none;">✏️ Editing existing entry</span>
+      </div>
+      <div id="wkndWarn" class="wknd-warn">
+        ⚠️ Weekend selected — SQDCP is recorded Monday to Friday only.
+      </div>
+
+      <!-- SQDCP rows -->
+      <div style="margin-top:18px;">
+        <table class="sq-table" id="sqTable">
+
+          <tr data-cat="safety">
+            <td><div class="cat-lbl"><span class="cat-ico">🛡️</span>SAFETY</div></td>
+            <td>
+              <div class="rag-sel">
+                <button class="rag-btn g" onclick="setRAG('safety','G',this)">● GREEN</button>
+                <button class="rag-btn r" onclick="setRAG('safety','R',this)">● RED</button>
+              </div>
+              <div class="crit">🟢 All systems up &amp; no urgent open tickets &nbsp;|&nbsp; 🔴 Any open urgent ticket</div>
+            </td>
+            <td style="width:270px;">
+              <textarea class="notes-ta" id="n-safety" placeholder="Notes (optional)…"></textarea>
+            </td>
+          </tr>
+
+          <tr data-cat="quality">
+            <td><div class="cat-lbl"><span class="cat-ico">✅</span>QUALITY</div></td>
+            <td>
+              <div class="rag-sel">
+                <button class="rag-btn g" onclick="setRAG('quality','G',this)">● GREEN</button>
+                <button class="rag-btn r" onclick="setRAG('quality','R',this)">● RED</button>
+              </div>
+              <div class="crit">🟢 No reopened tickets (Kick portal) &amp; no reopened fixes / deployments (Fraser's tracker) &nbsp;|&nbsp; 🔴 Any reopened tickets or fixes</div>
+            </td>
+            <td>
+              <textarea class="notes-ta" id="n-quality" placeholder="Notes (optional)…"></textarea>
+            </td>
+          </tr>
+
+          <tr data-cat="delivery">
+            <td><div class="cat-lbl"><span class="cat-ico">🚀</span>DELIVERY</div></td>
+            <td>
+              <div class="rag-sel">
+                <button class="rag-btn g" onclick="setRAG('delivery','G',this)">● GREEN</button>
+                <button class="rag-btn r" onclick="setRAG('delivery','R',this)">● RED</button>
+              </div>
+              <div class="crit">🟢 Milestones on track (Loop tracker); developments on schedule (Fraser's tracker) &nbsp;|&nbsp; 🔴 Milestone slipped or development delayed</div>
+            </td>
+            <td>
+              <textarea class="notes-ta" id="n-delivery" placeholder="Notes (optional)…"></textarea>
+            </td>
+          </tr>
+
+          <tr data-cat="cost">
+            <td><div class="cat-lbl"><span class="cat-ico">💰</span>COST</div></td>
+            <td>
+              <div class="rag-sel">
+                <button class="rag-btn g" onclick="setRAG('cost','G',this)">● GREEN</button>
+                <button class="rag-btn r" onclick="setRAG('cost','R',this)">● RED</button>
+              </div>
+              <div class="crit">🟢 Planned work on track; reactive demand within normal levels &nbsp;|&nbsp; 🔴 High reactive work impacting planned delivery <em style="opacity:.7">[Proposed]</em></div>
+            </td>
+            <td>
+              <textarea class="notes-ta" id="n-cost" placeholder="Notes (optional)…"></textarea>
+            </td>
+          </tr>
+
+          <tr data-cat="people">
+            <td><div class="cat-lbl"><span class="cat-ico">👥</span>PEOPLE</div></td>
+            <td>
+              <div class="rag-sel">
+                <button class="rag-btn g" onclick="setRAG('people','G',this)">● GREEN</button>
+                <button class="rag-btn r" onclick="setRAG('people','R',this)">● RED</button>
+              </div>
+              <div class="crit">🟢 Planned headcount met &nbsp;|&nbsp; 🔴 Below planned headcount</div>
+            </td>
+            <td>
+              <textarea class="notes-ta" id="n-people" placeholder="Notes (optional)…"></textarea>
+            </td>
+          </tr>
+
+        </table>
+      </div>
+
+      <!-- Save row -->
+      <div class="save-row">
+        <div class="ldr-row">
+          <span class="ldr-lbl">Leadership Board Status:</span>
+          <span class="ldr-badge nil" id="ldrBadge">— NOT SET</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="btn-save" id="clearBtn" onclick="clearForm()" style="background:var(--ds-light);font-size:13px;padding:8px 16px;">Clear</button>
+          <button class="btn-save" onclick="doSave()">💾 Save Entry</button>
+        </div>
+      </div>
+
+      <div class="rule-note">
+        <strong>Leadership Board Rule:</strong> All GREEN → reports as <strong>GREEN</strong> at Leadership. Any RED → triggers <strong>RED</strong> at Leadership.<br>
+        <strong>Amber:</strong> Ops Support does not use Amber. Cost, Delivery &amp; People definitions are still being finalised (May 2026).
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       TAB: THIS WEEK
+  ══════════════════════════════════════════════════════════ -->
+  <div id="panel-week" class="panel">
+    <div class="card">
+      <div class="card-hd">
+        📅 Weekly Overview
+        <div class="right" style="display:flex;align-items:center;gap:8px;">
+          <button class="icon-btn" onclick="navWeek(-1)">◀</button>
+          <span class="wk-lbl" id="wkLabel"></span>
+          <button class="icon-btn" onclick="navWeek(1)">▶</button>
+        </div>
+      </div>
+      <div id="wkGrid"></div>
+      <p style="font-size:11px;color:var(--ds-light);margin-top:12px;">
+        💡 Tip: hover over any cell to see notes. Click a date header to jump to that day's entry.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       TAB: HISTORY
+  ══════════════════════════════════════════════════════════ -->
+  <div id="panel-history" class="panel">
+
+    <!-- Stats strip -->
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-lbl">Total Days</div>
+        <div class="stat-val" id="sTot">—</div>
+        <div class="stat-sub">recorded</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl">All Green</div>
+        <div class="stat-val" id="sAllG" style="color:var(--g)">—</div>
+        <div class="stat-sub">full green days</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl">Safety RED</div>
+        <div class="stat-val" id="sSafe" style="color:var(--r)">—</div>
+        <div class="stat-sub">days</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl">Quality RED</div>
+        <div class="stat-val" id="sQual" style="color:var(--r)">—</div>
+        <div class="stat-sub">days</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl">Delivery RED</div>
+        <div class="stat-val" id="sDel" style="color:var(--r)">—</div>
+        <div class="stat-sub">days</div>
+      </div>
+    </div>
+
+    <!-- Trend chart -->
+    <div class="card">
+      <div class="card-hd">📈 RAG Trend — Last 20 Working Days</div>
+      <div class="chart-wrap">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Historical table -->
+    <div class="card">
+      <div class="card-hd">📋 All Records</div>
+
+      <div class="flt-row">
+        <div class="flt-grp">
+          <label>From</label>
+          <input type="date" id="fltFrom">
+        </div>
+        <div class="flt-grp">
+          <label>To</label>
+          <input type="date" id="fltTo">
+        </div>
+        <div class="flt-grp">
+          <label>Filter by RED in</label>
+          <select id="fltCat">
+            <option value="">— Any category —</option>
+            <option value="safety">Safety</option>
+            <option value="quality">Quality</option>
+            <option value="delivery">Delivery</option>
+            <option value="cost">Cost</option>
+            <option value="people">People</option>
+            <option value="leadership">Leadership (Overall)</option>
+          </select>
+        </div>
+        <button class="btn-flt apply" onclick="renderHistory()">Apply</button>
+        <button class="btn-flt clear" onclick="clearFilters()">Reset</button>
+      </div>
+
+      <div id="histContainer"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       TAB: DATA
+  ══════════════════════════════════════════════════════════ -->
+  <div id="panel-data" class="panel">
+    <div class="card">
+      <div class="card-hd">💾 Data Management</div>
+      <div class="exp-grid">
+
+        <div class="exp-card">
+          <h3>📤 Export to CSV</h3>
+          <p>Download all recorded SQDCP data as a CSV file — open in Excel for further analysis or share with the team.</p>
+          <button class="btn-exp primary" onclick="exportCSV()">Download CSV</button>
+        </div>
+
+        <div class="exp-card">
+          <h3>📥 Import from CSV</h3>
+          <p>Restore data from a previously exported CSV. Existing records for the same date are kept; only new dates are imported.</p>
+          <input type="file" id="importFile" accept=".csv" style="display:none" onchange="importCSV(this)">
+          <button class="btn-exp outline" onclick="document.getElementById('importFile').click()">Choose CSV File</button>
+        </div>
+
+        <div class="exp-card">
+          <h3>📋 Copy as JSON</h3>
+          <p>Copy all data to clipboard as JSON — useful for moving data to another browser or device manually.</p>
+          <button class="btn-exp outline" onclick="copyJSON()">Copy to Clipboard</button>
+        </div>
+
+        <div class="exp-card">
+          <h3>🗑️ Clear All Data</h3>
+          <p>Permanently delete all SQDCP records from this browser. This cannot be undone — please export a CSV backup first.</p>
+          <button class="btn-exp danger" onclick="clearAll()">Clear All Data</button>
+        </div>
+
+      </div>
+      <div style="margin-top:18px;padding:13px 16px;background:#eaf3fb;border-radius:8px;font-size:12px;color:var(--ds-navy);line-height:1.6;">
+        ℹ️ <strong>How data is stored:</strong> Records are saved in your browser's local storage on this device. To access data across multiple devices, export a CSV from one device and import it on another — or nominate one device as your primary entry point and share exported reports.
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════════════════ */
+const KEY   = 'ds_sqdcp_v2';
+const CATS  = ['safety','quality','delivery','cost','people'];
+const ICONS = { safety:'🛡️', quality:'✅', delivery:'🚀', cost:'💰', people:'👥' };
+const LBLS  = { safety:'Safety', quality:'Quality', delivery:'Delivery', cost:'Cost', people:'People' };
+const VALS  = { G:'GREEN', A:'AMBER', R:'RED' };
+
+/* ═══════════════════════════════════════════════════════════
+   STORAGE
+═══════════════════════════════════════════════════════════ */
+function db()          { try { return JSON.parse(localStorage.getItem(KEY)||'{}'); } catch { return {}; } }
+function dbSave(d)     { localStorage.setItem(KEY, JSON.stringify(d)); }
+function dbGet(dt)     { return db()[dt] || null; }
+function dbSet(dt, e)  { const d=db(); d[dt]={...e,date:dt,savedAt:new Date().toISOString()}; dbSave(d); }
+function dbAll()       { return Object.values(db()).sort((a,b)=>b.date.localeCompare(a.date)); }
+
+/* ═══════════════════════════════════════════════════════════
+   DATE UTILS
+═══════════════════════════════════════════════════════════ */
+function todayISO() {
+  const d=new Date(); return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+}
+function p2(n){ return String(n).padStart(2,'0'); }
+function isWknd(s){ const w=new Date(s+'T12:00:00').getDay(); return w===0||w===6; }
+function dayName(s,opt){ return new Date(s+'T12:00:00').toLocaleDateString('en-GB',opt||{weekday:'long'}); }
+function fmt(s){
+  return new Date(s+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+function prevWD(s){
+  const d=new Date(s+'T12:00:00'); d.setDate(d.getDate()-1);
+  if(d.getDay()===0) d.setDate(d.getDate()-2);
+  if(d.getDay()===6) d.setDate(d.getDate()-1);
+  return d.toISOString().split('T')[0];
+}
+function nextWD(s){
+  const d=new Date(s+'T12:00:00'); d.setDate(d.getDate()+1);
+  if(d.getDay()===0) d.setDate(d.getDate()+1);
+  if(d.getDay()===6) d.setDate(d.getDate()+2);
+  return d.toISOString().split('T')[0];
+}
+function weekDates(offset){
+  const t=new Date();
+  const mon=new Date(t);
+  const dow=t.getDay();
+  mon.setDate(t.getDate()-(dow===0?6:dow-1)+(offset*7));
+  mon.setHours(12,0,0,0);
+  return Array.from({length:5},(_,i)=>{
+    const d=new Date(mon); d.setDate(mon.getDate()+i);
+    return d.toISOString().split('T')[0];
+  });
+}
+function todayWeekday(){
+  const d=new Date(); const w=d.getDay();
+  if(w===0) d.setDate(d.getDate()+1);
+  if(w===6) d.setDate(d.getDate()+2);
+  return d.toISOString().split('T')[0];
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════ */
+let cur  = { safety:null, quality:null, delivery:null, cost:null, people:null };
+let wkOff = 0;
+let chart = null;
+
+/* ═══════════════════════════════════════════════════════════
+   CLOCK
+═══════════════════════════════════════════════════════════ */
+function tick(){
+  const n=new Date();
+  document.getElementById('hdrClock').innerHTML=
+    n.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+    +'<br>'+n.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+tick(); setInterval(tick, 30000);
+
+/* ═══════════════════════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════════════════════ */
+function showTab(tab, btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+  btn.classList.add('active');
+  if(tab==='week')    renderWeek();
+  if(tab==='history'){ renderHistory(); renderChart(); updateStats(); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DAILY ENTRY
+═══════════════════════════════════════════════════════════ */
+function initEntry(){
+  const inp=document.getElementById('entryDate');
+  inp.value=todayWeekday();
+  refreshEntry();
+}
+
+function onDateChange(){ refreshEntry(); }
+
+function refreshEntry(){
+  const s=document.getElementById('entryDate').value;
+  const weekend=isWknd(s);
+  document.getElementById('dayTag').textContent=weekend?'⚠️ Weekend':dayName(s);
+  document.getElementById('wkndWarn').style.display=weekend?'block':'none';
+  document.getElementById('sqTable').style.opacity=weekend?'0.3':'1';
+  document.getElementById('sqTable').style.pointerEvents=weekend?'none':'';
+  if(!weekend) loadEntry(s);
+}
+
+function loadEntry(s){
+  const e=dbGet(s);
+  CATS.forEach(c=>{
+    cur[c]=e?e[c]:null;
+    document.getElementById('n-'+c).value=e?(e[c+'Note']||''):'';
+    document.querySelectorAll(`tr[data-cat="${c}"] .rag-btn`).forEach(b=>b.classList.remove('active'));
+    if(e&&e[c]){
+      document.querySelectorAll(`tr[data-cat="${c}"] .rag-btn`).forEach(b=>{
+        if(b.classList.contains(e[c])) b.classList.add('active');
+      });
+    }
+  });
+  const ex=document.getElementById('existingBadge');
+  ex.style.display=e?'inline':'none';
+  calcLeader();
+}
+
+function navDate(dir){
+  const inp=document.getElementById('entryDate');
+  inp.value=dir<0?prevWD(inp.value):nextWD(inp.value);
+  refreshEntry();
+}
+
+function setRAG(cat, val, btn){
+  cur[cat]=val;
+  btn.closest('.rag-sel').querySelectorAll('.rag-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  calcLeader();
+}
+
+function calcLeader(){
+  const badge=document.getElementById('ldrBadge');
+  const vals=CATS.map(c=>cur[c]).filter(Boolean);
+  if(!vals.length){ badge.textContent='— NOT SET'; badge.className='ldr-badge nil'; return; }
+  if(vals.includes('R')){ badge.textContent='🔴 RED';   badge.className='ldr-badge r'; }
+  else                  { badge.textContent='🟢 GREEN'; badge.className='ldr-badge g'; }
+}
+
+function doSave(){
+  const s=document.getElementById('entryDate').value;
+  if(isWknd(s)){ toast('Cannot save weekend entries'); return; }
+  const e={};
+  CATS.forEach(c=>{ e[c]=cur[c]; e[c+'Note']=document.getElementById('n-'+c).value.trim(); });
+  const vals=CATS.map(c=>e[c]).filter(Boolean);
+  e.leadership=!vals.length?null:vals.includes('R')?'R':'G';
+  dbSet(s,e);
+  document.getElementById('existingBadge').style.display='inline';
+  toast('✅ Saved for '+fmt(s));
+}
+
+function clearForm(){
+  CATS.forEach(c=>{
+    cur[c]=null;
+    document.querySelectorAll(`tr[data-cat="${c}"] .rag-btn`).forEach(b=>b.classList.remove('active'));
+    document.getElementById('n-'+c).value='';
+  });
+  calcLeader();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   WEEK VIEW
+═══════════════════════════════════════════════════════════ */
+function renderWeek(){
+  const dates=weekDates(wkOff);
+  const today=todayISO();
+  const d=db();
+  const d0=new Date(dates[0]+'T12:00:00');
+  const d4=new Date(dates[4]+'T12:00:00');
+  const label=(wkOff===0?'This Week':wkOff===-1?'Last Week':
+    wkOff<0?Math.abs(wkOff)+' weeks ago':wkOff+' weeks ahead')
+    +' — '+d0.toLocaleDateString('en-GB',{day:'numeric',month:'short'})
+    +' – '+d4.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('wkLabel').textContent=label;
+
+  let h=`<table class="wk-grid"><thead><tr><th class="cat-h">Category</th>`;
+  dates.forEach(dt=>{
+    const n=new Date(dt+'T12:00:00');
+    const isT=dt===today;
+    h+=`<th class="${isT?'today':''}" style="cursor:pointer;width:17%"
+            onclick="jumpToDate('${dt}')"
+            title="Click to record this day">
+          ${n.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase()}
+          <br><span style="font-size:16px;font-weight:700;">${n.getDate()}</span>
+          ${isT?'<br><span style="font-size:9px;color:var(--ds-sky);letter-spacing:.5px;">TODAY</span>':''}
+        </th>`;
+  });
+  h+=`</tr></thead><tbody>`;
+
+  CATS.forEach(cat=>{
+    h+=`<tr><td class="cat-c">${ICONS[cat]} ${LBLS[cat]}</td>`;
+    dates.forEach(dt=>{
+      const e=d[dt]; const v=e?e[cat]:null;
+      const note=e?(e[cat+'Note']||''):'';
+      const isT=dt===today;
+      const fullVal=v?VALS[v]:'—';
+      h+=`<td class="${isT?'today-c':''}"
+               title="${fullVal}${note?' — '+note.replace(/"/g,'&quot;'):''}">
+            <span class="rag-dot ${v||'N'}">${v||'–'}</span>
+          </td>`;
+    });
+    h+=`</tr>`;
+  });
+
+  // Leadership row
+  h+=`<tr class="ldr-row"><td class="cat-c" style="font-weight:700;">🏆 Leadership</td>`;
+  dates.forEach(dt=>{
+    const e=d[dt]; const v=e?e.leadership:null;
+    const isT=dt===today;
+    const fullVal=v?VALS[v]:'—';
+    h+=`<td class="${isT?'today-c':''}" title="${fullVal}">
+          <span class="rag-dot ${v||'N'}">${v||'–'}</span>
+        </td>`;
+  });
+  h+=`</tr></tbody></table>`;
+  document.getElementById('wkGrid').innerHTML=h;
+}
+
+function navWeek(dir){ wkOff+=dir; renderWeek(); }
+
+function jumpToDate(dt){
+  document.getElementById('entryDate').value=dt;
+  refreshEntry();
+  showTab('entry', document.getElementById('nav-entry'));
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HISTORY
+═══════════════════════════════════════════════════════════ */
+function clearFilters(){
+  ['fltFrom','fltTo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fltCat').value='';
+  renderHistory();
+}
+
+function renderHistory(){
+  const from = document.getElementById('fltFrom').value;
+  const to   = document.getElementById('fltTo').value;
+  const cat  = document.getElementById('fltCat').value;
+
+  let rows = dbAll();
+  if(from) rows=rows.filter(e=>e.date>=from);
+  if(to)   rows=rows.filter(e=>e.date<=to);
+  if(cat)  rows=rows.filter(e=>e[cat]==='R');
+
+  const el=document.getElementById('histContainer');
+  if(!rows.length){
+    el.innerHTML=`<div class="empty"><div class="empty-ico">📭</div><p>No entries match the current filters.</p></div>`;
+    return;
+  }
+
+  let h=`<table class="hist-tbl">
+    <thead><tr>
+      <th>Date</th><th>Day</th>
+      <th>Safety</th><th>Quality</th><th>Delivery</th><th>Cost</th><th>People</th>
+      <th>Leadership</th><th style="min-width:160px">Notes</th>
+    </tr></thead><tbody>`;
+
+  rows.forEach(e=>{
+    const notes=CATS.map(c=>e[c+'Note']?`${LBLS[c]}: ${e[c+'Note']}`:'').filter(Boolean).join(' · ');
+    h+=`<tr>
+      <td style="font-weight:600;white-space:nowrap;"
+          class="edit-link"
+          onclick="jumpToDate('${e.date}')"
+          title="Open in Daily Entry">${fmt(e.date)}</td>
+      <td style="color:var(--ds-light);white-space:nowrap;">${dayName(e.date)}</td>
+      ${CATS.map(c=>`<td><span class="pill ${e[c]||'N'}">${e[c]?VALS[e[c]]:'—'}</span></td>`).join('')}
+      <td><span class="pill ${e.leadership||'N'}">${e.leadership?VALS[e.leadership]:'—'}</span></td>
+      <td style="font-size:11px;color:var(--ds-light);">${notes}</td>
+    </tr>`;
+  });
+  h+=`</tbody></table>`;
+  el.innerHTML=h;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STATS
+═══════════════════════════════════════════════════════════ */
+function updateStats(){
+  const all=dbAll();
+  document.getElementById('sTot').textContent=all.length;
+  document.getElementById('sAllG').textContent=all.filter(e=>e.leadership==='G').length;
+  document.getElementById('sSafe').textContent=all.filter(e=>e.safety==='R').length;
+  document.getElementById('sQual').textContent=all.filter(e=>e.quality==='R').length;
+  document.getElementById('sDel').textContent=all.filter(e=>e.delivery==='R').length;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TREND CHART
+═══════════════════════════════════════════════════════════ */
+function renderChart(){
+  const all=dbAll().slice(0,20).reverse();
+  const wrap=document.querySelector('.chart-wrap');
+  if(!all.length){
+    wrap.innerHTML=`<div class="empty"><p>Record at least one entry to see the trend chart.</p></div>`;
+    return;
+  }
+  if(!wrap.querySelector('canvas')){
+    wrap.innerHTML='<canvas id="trendChart"></canvas>';
+  }
+  const labels=all.map(e=>{
+    const d=new Date(e.date+'T12:00:00');
+    return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  });
+  const palette=['#2196F3','#4CAF50','#FF9800','#9C27B0','#00BCD4'];
+  const datasets=CATS.map((c,i)=>({
+    label: LBLS[c],
+    data: all.map(e=>e[c]==='R'?1:e[c]==='G'?0:null),
+    borderColor: palette[i],
+    backgroundColor: palette[i]+'22',
+    borderWidth: 2,
+    pointRadius: 5,
+    pointHoverRadius: 7,
+    tension: 0,
+    stepped: 'before',
+    spanGaps: true,
+  }));
+  if(chart){ chart.destroy(); chart=null; }
+  const ctx=document.getElementById('trendChart').getContext('2d');
+  chart=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        y:{
+          min:-0.15, max:1.15,
+          ticks:{ callback:v=>v===0?'🟢 GREEN':v===1?'🔴 RED':'', stepSize:1 },
+          grid:{ color:'rgba(0,0,0,.05)' }
+        },
+        x:{ grid:{ color:'rgba(0,0,0,.05)' } }
+      },
+      plugins:{
+        legend:{ position:'top', labels:{ boxWidth:12, padding:16 } },
+        tooltip:{
+          callbacks:{
+            label: c=>`${c.dataset.label}: ${c.raw===1?'🔴 RED':c.raw===0?'🟢 GREEN':'—'}`
+          }
+        }
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EXPORT / IMPORT
+═══════════════════════════════════════════════════════════ */
+function exportCSV(){
+  const rows=dbAll().reverse();
+  if(!rows.length){ toast('No data to export'); return; }
+  const hdr=['Date','Day','Safety','Quality','Delivery','Cost','People','Leadership',
+             'Safety Note','Quality Note','Delivery Note','Cost Note','People Note'];
+  const body=rows.map(e=>[
+    e.date,
+    dayName(e.date),
+    e.safety?VALS[e.safety]:'',
+    e.quality?VALS[e.quality]:'',
+    e.delivery?VALS[e.delivery]:'',
+    e.cost?VALS[e.cost]:'',
+    e.people?VALS[e.people]:'',
+    e.leadership?VALS[e.leadership]:'',
+    (e.safetyNote||'').replace(/,/g,'；'),
+    (e.qualityNote||'').replace(/,/g,'；'),
+    (e.deliveryNote||'').replace(/,/g,'；'),
+    (e.costNote||'').replace(/,/g,'；'),
+    (e.peopleNote||'').replace(/,/g,'；'),
+  ]);
+  const csv=[hdr,...body].map(r=>r.join(',')).join('\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  const a=Object.assign(document.createElement('a'),{href:url,download:`SQDCP_OpsSupport_${todayISO()}.csv`});
+  a.click(); URL.revokeObjectURL(url);
+  toast('✅ Exported '+rows.length+' entries');
+}
+
+function importCSV(inp){
+  const f=inp.files[0]; if(!f) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const lines=ev.target.result.trim().split('\n');
+    const data=db(); let imp=0, skip=0;
+    const ragMap={'GREEN':'G','AMBER':'A','RED':'R',G:'G',A:'A',R:'R'};
+    for(let i=1;i<lines.length;i++){
+      const c=lines[i].split(','); if(c.length<8) continue;
+      const dt=c[0].trim(); if(!/^\d{4}-\d{2}-\d{2}$/.test(dt)) continue;
+      if(data[dt]){ skip++; continue; }
+      data[dt]={
+        date:dt,
+        safety:   ragMap[c[2]?.trim()]||null,
+        quality:  ragMap[c[3]?.trim()]||null,
+        delivery: ragMap[c[4]?.trim()]||null,
+        cost:     ragMap[c[5]?.trim()]||null,
+        people:   ragMap[c[6]?.trim()]||null,
+        leadership: ragMap[c[7]?.trim()]||null,
+        safetyNote:   (c[8]||'').replace(/；/g,','),
+        qualityNote:  (c[9]||'').replace(/；/g,','),
+        deliveryNote: (c[10]||'').replace(/；/g,','),
+        costNote:     (c[11]||'').replace(/；/g,','),
+        peopleNote:   (c[12]||'').replace(/；/g,','),
+        savedAt: new Date().toISOString()
+      };
+      imp++;
+    }
+    dbSave(data);
+    toast(`✅ Imported ${imp} entries (${skip} skipped as duplicates)`);
+    inp.value='';
+  };
+  reader.readAsText(f);
+}
+
+function copyJSON(){
+  navigator.clipboard.writeText(JSON.stringify(db(),null,2))
+    .then(()=>toast('✅ Data copied to clipboard'))
+    .catch(()=>toast('❌ Clipboard access denied by browser'));
+}
+
+function clearAll(){
+  if(!confirm('⚠️ This will permanently delete ALL SQDCP data from this browser.\n\nMake sure you have exported a CSV backup first!\n\nContinue?')) return;
+  if(!confirm('Final confirmation — click OK to delete all data permanently.')) return;
+  localStorage.removeItem(KEY);
+  toast('🗑️ All data deleted');
+  renderHistory(); updateStats();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════════ */
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),3200);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════ */
+initEntry();
+</script>
+</body>
+</html>
